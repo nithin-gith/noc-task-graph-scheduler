@@ -210,23 +210,15 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
     int destinationNodeX = destinationNode.getLocationX();
     int destinationNodeY = destinationNode.getLocationY();
     int time = startTime;
-    cout<<"id :"<<flit.message_id<<"_"<<flit.id<<endl;
-
-    // cout<<noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.portSchedule[0].messageFlit.id<<endl;
-    // cout<<noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.portSchedule[1].messageFlit.id<<endl;
-    // cout<<noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.portSchedule[2].messageFlit.id<<endl;
-
+    cout<<"ID : m_"<<flit.message_id<<"_"<<flit.id<<endl;
+    cout<<"PATH : ";
+    cout<<"("<<currentY<<","<<currentX<<") ";
     while(true){    
-        // cout<<currentY<<","<<currentX<<endl;
         
         if (currentX == destinationNodeX && currentY == destinationNodeY){
-            cout<<"Message reached destination"<<endl;
-
-            // cout<<noc.nodes[0].router.localPort.portSchedule[0].messageFlit.id<<endl;
-            // cout<<noc.nodes[0].router.localPort.portSchedule[1].messageFlit.id<<endl;
-            // cout<<noc.nodes[0].router.localPort.portSchedule[2].messageFlit.id<<endl;
-
-            cout<<time<<endl;
+            cout<<endl;
+            cout<<"TIME : "<<time<<endl;
+            cout<<"---------------------------------"<<endl;
             return noc;
         }
         else if(currentX < destinationNodeX){
@@ -237,7 +229,6 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
                 time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.westPort.updateSchedule(time, flit, EAST);
             }
             currentX++;
-            // time++;
         }else if (currentX > destinationNodeX){
             if (currentX == sourceNodeX){
                 time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, WEST);
@@ -246,7 +237,6 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
                 time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.eastPort.updateSchedule(time, flit, WEST);
             }
             currentX--;
-            // time++;
         }else if (currentX == destinationNodeX){
             if (currentY < destinationNodeY){
                 if (currentY == sourceNodeY){
@@ -256,7 +246,6 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
                     time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.northPort.updateSchedule(time, flit, SOUTH);
                 }
                 currentY++;
-                // time++;
             }
             else if (currentY > destinationNodeY){
                 if (currentY == sourceNodeY){
@@ -266,10 +255,9 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
                     time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.southPort.updateSchedule(time, flit, NORTH);
                 }
                 currentY--;
-                // time++;
             }
         }
-        // cout<<time<<endl;
+        cout<<"-> ("<<currentY<<","<<currentX<<") ";
     }
     return noc;
 }
