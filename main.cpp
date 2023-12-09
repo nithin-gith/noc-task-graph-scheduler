@@ -6,6 +6,8 @@ using namespace std;
 
 const int N = 10000;
 
+class NoC;
+class Node;
 
 class Task{
     
@@ -27,6 +29,9 @@ class MessageFlit{
         this->id = id;
         this->message_id = message_id;
     }
+
+    // route the flit to the destination using xy routing and update the ports and schedule
+    NoC routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destinationNode, int startTime);
 };
 
 class Message{
@@ -48,20 +53,64 @@ class Message{
             flits.push_back(new_flit);
         }
     }
+
+    MessageFlit getFlit(int i){
+        return flits[i-1];
+    }
+
+
 };
 
 enum Direction { 
-    NORTH, SOUTH, EAST, WEST
+    NORTH, SOUTH, EAST, WEST, NONE
 };
 
 class UnitPortSlot{
-    Message message;
+    MessageFlit messageFlit;
     Direction direction;
+
+    friend class Port;
+    friend class MessageFlit;
+    
+    public:
+    UnitPortSlot() : messageFlit(0, 0), direction(NONE){
+        messageFlit = MessageFlit(0, 0);
+        direction = NONE;
+    }
 };
 
 
 class Port{
     vector<UnitPortSlot> portSchedule;
+
+    friend class Router;
+    friend class MessageFlit;
+    
+    public:
+    Port() : portSchedule(10000) {
+    }
+
+    int updateSchedule (int time, MessageFlit flit, Direction direction){
+        int updatedTime = time;
+        if (portSchedule[updatedTime].direction == NONE){// slot is empty
+            portSchedule[updatedTime].messageFlit = flit;
+            portSchedule[updatedTime].direction = direction;
+        }else{
+            while(true){
+                updatedTime++;
+                if (time > 10000){
+                    cout<<"Error: Port is full"<<endl;
+                    break;
+                }
+                if (portSchedule[updatedTime].direction == NONE){
+                    portSchedule[updatedTime].messageFlit = flit;
+                    portSchedule[updatedTime].direction = direction;
+                    break;
+                }
+            }
+        }
+        return updatedTime - time + 1;   
+    }
 };
 
 class Router{
@@ -78,6 +127,18 @@ class Router{
     Port southPort;
     Port eastPort;
     Port westPort;
+    Port localPort;
+
+    friend class Node;
+    friend class MessageFlit;
+    
+    public:
+    Router(){
+        northPort = Port();
+        southPort = Port();
+        eastPort = Port();
+        westPort = Port();
+    }
 };
 
 class ProcessingElement{
@@ -93,22 +154,28 @@ class Node{
     int locationY;
     Router router;
     ProcessingElement processingElement;
+
+    friend class NoC;
+    friend class MessageFlit;
+
     public:
-    Node(int x, int y){
+    Node(int y, int x){
         this->locationX = x;
-        this->location_y = y;
+        this->locationY = y;
+        router = Router();
     }
     int getLocationX(){
         return locationX;
     }
     int getLocationY(){
-        return locationX;
+        return locationY;
     }
 };
 
 class NoC{
     int n;
     vector<Node> nodes;
+    friend class MessageFlit;
     
     public: 
     NoC(int n){
@@ -120,13 +187,92 @@ class NoC{
             }
         }
     }
-    
+    Node getNode(int i){
+        return nodes[i];
+    }
+    int getN(){
+        return n;
+    }
+
     void print(){
         for (int i = 0; i < n*n; i++){
             cout << nodes[i].getLocationX() << " " << nodes[i].getLocationY() << endl;
         }
     }
 };
+
+
+NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destinationNode, int startTime){
+    int sourceNodeX = sourceNode.getLocationX();
+    int sourceNodeY = sourceNode.getLocationY();
+    int currentX = sourceNodeX;
+    int currentY = sourceNodeY;
+    int destinationNodeX = destinationNode.getLocationX();
+    int destinationNodeY = destinationNode.getLocationY();
+    int time = startTime;
+    cout<<"id :"<<flit.message_id<<"_"<<flit.id<<endl;
+
+    // cout<<noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.portSchedule[0].messageFlit.id<<endl;
+    // cout<<noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.portSchedule[1].messageFlit.id<<endl;
+    // cout<<noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.portSchedule[2].messageFlit.id<<endl;
+
+    while(true){    
+        // cout<<currentY<<","<<currentX<<endl;
+        
+        if (currentX == destinationNodeX && currentY == destinationNodeY){
+            cout<<"Message reached destination"<<endl;
+
+            // cout<<noc.nodes[0].router.localPort.portSchedule[0].messageFlit.id<<endl;
+            // cout<<noc.nodes[0].router.localPort.portSchedule[1].messageFlit.id<<endl;
+            // cout<<noc.nodes[0].router.localPort.portSchedule[2].messageFlit.id<<endl;
+
+            cout<<time<<endl;
+            return noc;
+        }
+        else if(currentX < destinationNodeX){
+            if (currentX == sourceNodeX){
+                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, EAST);
+            }
+            else{
+                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.westPort.updateSchedule(time, flit, EAST);
+            }
+            currentX++;
+            // time++;
+        }else if (currentX > destinationNodeX){
+            if (currentX == sourceNodeX){
+                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, WEST);
+            }
+            else{
+                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.eastPort.updateSchedule(time, flit, WEST);
+            }
+            currentX--;
+            // time++;
+        }else if (currentX == destinationNodeX){
+            if (currentY < destinationNodeY){
+                if (currentY == sourceNodeY){
+                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, SOUTH);
+                }
+                else{
+                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.northPort.updateSchedule(time, flit, SOUTH);
+                }
+                currentY++;
+                // time++;
+            }
+            else if (currentY > destinationNodeY){
+                if (currentY == sourceNodeY){
+                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, NORTH);
+                }
+                else{
+                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.southPort.updateSchedule(time, flit, NORTH);
+                }
+                currentY--;
+                // time++;
+            }
+        }
+        // cout<<time<<endl;
+    }
+    return noc;
+}
 
 
 int main() {
@@ -138,8 +284,17 @@ int main() {
 
 
 
-    NoC noc = NoC(4);
-
+    NoC noc = NoC(3);
+    // noc.print();
+    Message m_12 = Message(1, 2, 3);
+    MessageFlit m_12_1 = m_12.getFlit(1);
+    MessageFlit m_12_2 = m_12.getFlit(2);
+    MessageFlit m_12_3 = m_12.getFlit(3);
+    Node sourceNode = noc.getNode(0);
+    Node destinationNode = noc.getNode(8);
+    noc = m_12_1.routeXY(noc, m_12_1, sourceNode, destinationNode, 0);
+    noc = m_12_2.routeXY(noc, m_12_2, sourceNode, destinationNode, 0);
+    noc = m_12_3.routeXY(noc, m_12_3, sourceNode, destinationNode, 0);
 
 
 
