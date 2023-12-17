@@ -263,6 +263,16 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
 }
 
 
+// int get_task_rank(int[1000][1000] task_graph, int[1000][1000] execution_time_matrix, int no_of_tasks, int task_id){
+//     //checking sink node or not
+//     bool sink_node = true;
+//     for (int i = 1; i<= no_of_tasks; i++){
+//         if (task_graph[task_id][i] != 0) sink_node = false;
+//     }
+//     cout<<sink_node<<endl;
+// }
+
+
 int main() {
     IOS
     #ifndef ONLINE_JUDGE
@@ -271,8 +281,62 @@ int main() {
     #endif
 
 
+    srand(time(0));
+    
+    int n;
+    int no_of_tasks;
+    int task_graph[1000][1000];
+    int execution_time_matrix[1000][1000];
+    int rank [1000];
 
-    NoC noc = NoC(3);
+    // cout<<"Enter the size of n x n mesh NoC:";
+    cin>>n;
+
+    // cout<<"Enter number of tasks :";
+    cin>>no_of_tasks;
+
+
+    // cout<<"Input the adjancy matrix :";
+    for (int i = 1; i <= no_of_tasks; i++) {
+        for (int j = 1; j <= no_of_tasks; j++) {
+            cin >> task_graph[i][j];
+        }
+    }
+
+
+    // input execution times
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //    for (int j = 0; j < n * n ; j++) {
+    //         cin >> execution_time_matrix[i][j];
+    //     }
+    // }
+
+                // OR
+
+    // generate random execution times
+    for (int i = 1; i <= no_of_tasks; i++) {
+        for (int j = 0; j < n * n ; j++) {
+            execution_time_matrix[i][j] = rand() % 21 + 10;;
+        }
+    }
+
+    cout<<"Execution time matrix"<<endl;
+
+    for (int i = 1; i <= no_of_tasks; i++) {
+        for (int j = 0; j < n * n ; j++) {
+            cout<<execution_time_matrix[i][j]<<" ";
+        }
+        cout<<endl;
+    }
+    cout<<endl;
+
+
+    // int rank_6 = get_task_rank(task_graph, execution_time_matrix, no_of_tasks, 6);
+
+
+
+
+    NoC noc = NoC(n);
     // noc.print();
     Message m_12 = Message(1, 2, 3);
     MessageFlit m_12_1 = m_12.getFlit(1);
@@ -284,7 +348,7 @@ int main() {
     noc = m_12_2.routeXY(noc, m_12_2, sourceNode, destinationNode, 0);
     noc = m_12_3.routeXY(noc, m_12_3, sourceNode, destinationNode, 0);
 
-
+    
 
     #ifndef ONLINE_JUDGE
     cerr << "\ntime taken : " << (float)clock() / CLOCKS_PER_SEC << " secs " << endl;
