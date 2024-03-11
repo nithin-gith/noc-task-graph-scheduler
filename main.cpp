@@ -6,6 +6,10 @@ using namespace std;
 
 const int N = 10000;
 
+int n;
+int no_of_tasks;
+map<int, double> task_ranks;
+
 class NoC;
 class Node;
 
@@ -262,15 +266,65 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
     return noc;
 }
 
+double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1000], int task_id){
+    bool sink_node = true;
 
-// int get_task_rank(int[1000][1000] task_graph, int[1000][1000] execution_time_matrix, int no_of_tasks, int task_id){
-//     //checking sink node or not
-//     bool sink_node = true;
-//     for (int i = 1; i<= no_of_tasks; i++){
-//         if (task_graph[task_id][i] != 0) sink_node = false;
-//     }
-//     cout<<sink_node<<endl;
-// }
+    if (task_ranks[task_id] != 0) return task_ranks[task_id];
+
+    for (int i = 1; i <= no_of_tasks; i++){
+        if (task_graph[task_id][i] != 0){
+            sink_node = false; 
+            break;
+        }
+    }
+
+    double sum_exec_time = 0;
+    for (int i = 1; i <= n*n ; i++ ){
+        sum_exec_time += execution_time_matrix[task_id][i];
+    }
+    double avg_exec_time = sum_exec_time / (n * n * 1.0);
+
+    if (sink_node) return avg_exec_time;
+    else{
+        // max_succ_task_rank = P(T_j) + CC_i,j Tj is successor of Ti
+        double max_succ_task_rank = 0;
+        for (int i = 1; i<= no_of_tasks; i++){
+            if (task_graph[task_id][i]!=0) max_succ_task_rank = max(max_succ_task_rank, getTaskRank(task_graph, execution_time_matrix, i) + task_graph[task_id][i]);
+        }
+        task_ranks[task_id] = avg_exec_time + max_succ_task_rank;
+        return task_ranks[task_id];
+    }
+    return 0.0;
+}
+
+bool sortByValue(const std::pair<int, int>& a, const std::pair<int, int>& b) {
+    return a.second > b.second; // Sort in descending order of ranks
+}
+
+vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_time_matrix[1000][1000]){
+    
+    vector<int> task_priority_list;
+    map<int, double> avg_exec_times;
+    
+    for (int i = 1; i<= no_of_tasks; i++){
+        task_ranks[i] = 0;
+    }
+    for (int i = 1; i<=no_of_tasks ; i++){
+        task_ranks[i] = getTaskRank(task_graph, execution_time_matrix, i);
+    }
+    vector<pair<int, double> > taskid_rank_pairs(task_ranks.begin(), task_ranks.end());
+    sort(taskid_rank_pairs.begin(), taskid_rank_pairs.end(), sortByValue);
+
+    for (auto taskid_rank_pair : taskid_rank_pairs){
+        task_priority_list.push_back(taskid_rank_pair.first);
+    }
+    
+    return task_priority_list;
+}
+
+
+
+
 
 
 int main() {
@@ -283,11 +337,10 @@ int main() {
 
     srand(time(0));
     
-    int n;
-    int no_of_tasks;
+    
     int task_graph[1000][1000];
     int execution_time_matrix[1000][1000];
-    int rank [1000];
+    vector<int> task_priority_list(1000, 0);
 
     // cout<<"Enter the size of n x n mesh NoC:";
     cin>>n;
@@ -305,48 +358,46 @@ int main() {
 
 
     // input execution times
-    // for (int i = 1; i <= no_of_tasks; i++) {
-    //    for (int j = 0; j < n * n ; j++) {
-    //         cin >> execution_time_matrix[i][j];
-    //     }
-    // }
+    for (int i = 1; i <= no_of_tasks; i++) {
+       for (int j = 1; j <= n * n ; j++) {
+            cin >> execution_time_matrix[i][j];
+        }
+    }
 
                 // OR
 
     // generate random execution times
-    for (int i = 1; i <= no_of_tasks; i++) {
-        for (int j = 0; j < n * n ; j++) {
-            execution_time_matrix[i][j] = rand() % 21 + 10;;
-        }
-    }
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //     for (int j = 0; j < n * n ; j++) {
+    //         execution_time_matrix[i][j] = rand() % 21 + 10;
+    //     }
+    // }
 
-    cout<<"Execution time matrix"<<endl;
+    // cout<<"Execution time matrix"<<endl;
 
-    for (int i = 1; i <= no_of_tasks; i++) {
-        for (int j = 0; j < n * n ; j++) {
-            cout<<execution_time_matrix[i][j]<<" ";
-        }
-        cout<<endl;
-    }
-    cout<<endl;
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //     for (int j = 1; j <= n * n ; j++) {
+    //         cout<<execution_time_matrix[i][j]<<" ";
+    //     }
+    //     cout<<endl;
+    // }
+    // cout<<endl;
 
-
-    // int rank_6 = get_task_rank(task_graph, execution_time_matrix, no_of_tasks, 6);
-
+    task_priority_list = generateTaskPriorityList(task_graph, execution_time_matrix);
 
 
 
-    NoC noc = NoC(n);
-    // noc.print();
-    Message m_12 = Message(1, 2, 3);
-    MessageFlit m_12_1 = m_12.getFlit(1);
-    MessageFlit m_12_2 = m_12.getFlit(2);
-    MessageFlit m_12_3 = m_12.getFlit(3);
-    Node sourceNode = noc.getNode(0);
-    Node destinationNode = noc.getNode(8);
-    noc = m_12_1.routeXY(noc, m_12_1, sourceNode, destinationNode, 0);
-    noc = m_12_2.routeXY(noc, m_12_2, sourceNode, destinationNode, 0);
-    noc = m_12_3.routeXY(noc, m_12_3, sourceNode, destinationNode, 0);
+    // NoC noc = NoC(n);
+    // // noc.print();
+    // Message m_12 = Message(1, 2, 3);
+    // MessageFlit m_12_1 = m_12.getFlit(1);
+    // MessageFlit m_12_2 = m_12.getFlit(2);
+    // MessageFlit m_12_3 = m_12.getFlit(3);
+    // Node sourceNode = noc.getNode(0);
+    // Node destinationNode = noc.getNode(15);
+    // noc = m_12_1.routeXY(noc, m_12_1, sourceNode, destinationNode, 0);
+    // noc = m_12_2.routeXY(noc, m_12_2, sourceNode, destinationNode, 0);
+    // noc = m_12_3.routeXY(noc, m_12_3, sourceNode, destinationNode, 0);
 
     
 
