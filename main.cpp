@@ -8,7 +8,7 @@ const int N = 10000;
 
 int n;
 int no_of_tasks;
-map<int, double> task_ranks;
+
 
 class NoC;
 class Node;
@@ -266,7 +266,7 @@ NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destin
     return noc;
 }
 
-double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1000], int task_id){
+double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1000], map<int, double> task_ranks, int task_id){
     bool sink_node = true;
 
     if (task_ranks[task_id] != 0) return task_ranks[task_id];
@@ -289,7 +289,7 @@ double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1
         // max_succ_task_rank = P(T_j) + CC_i,j Tj is successor of Ti
         double max_succ_task_rank = 0;
         for (int i = 1; i<= no_of_tasks; i++){
-            if (task_graph[task_id][i]!=0) max_succ_task_rank = max(max_succ_task_rank, getTaskRank(task_graph, execution_time_matrix, i) + task_graph[task_id][i]);
+            if (task_graph[task_id][i]!=0) max_succ_task_rank = max(max_succ_task_rank, getTaskRank(task_graph, execution_time_matrix, task_ranks, i) + task_graph[task_id][i]);
         }
         task_ranks[task_id] = avg_exec_time + max_succ_task_rank;
         return task_ranks[task_id];
@@ -303,6 +303,7 @@ bool sortByValue(const std::pair<int, int>& a, const std::pair<int, int>& b) {
 
 vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_time_matrix[1000][1000]){
     
+    map<int, double> task_ranks;
     vector<int> task_priority_list;
     map<int, double> avg_exec_times;
     
@@ -310,7 +311,7 @@ vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_t
         task_ranks[i] = 0;
     }
     for (int i = 1; i<=no_of_tasks ; i++){
-        task_ranks[i] = getTaskRank(task_graph, execution_time_matrix, i);
+        task_ranks[i] = getTaskRank(task_graph, execution_time_matrix,task_ranks, i);
     }
     vector<pair<int, double> > taskid_rank_pairs(task_ranks.begin(), task_ranks.end());
     sort(taskid_rank_pairs.begin(), taskid_rank_pairs.end(), sortByValue);
