@@ -1,4 +1,5 @@
 #include <bits/stdc++.h>
+#include "globals.h"
 using namespace std;
 
 #define endl '\n'
@@ -6,21 +7,36 @@ using namespace std;
 
 const int N = 10000;
 
-int n;
-int no_of_tasks;
 
 
 class NoC;
 class Node;
+class ProcessingElement;
+
 
 class Task{
     
     int id;
-    
+    // ProcessingElement allotedProcessor;
+    ProcessingElement* allotedProcessor;
+    // int processingElement;
+    int startTime;
+    int endTime;
     public:
     Task(int id){
         this->id = id;
     }
+    int getTaskId(){
+        return this->id;
+    }
+    pair<int,int> getStartEndTime(){
+        return pair<int, int>(this->startTime, this->endTime);
+    }
+    void setStartEndTime(int startTime, int endTime){
+        this->startTime = startTime;
+        this->endTime = endTime;
+    }
+
 };
 
 class MessageFlit{
@@ -149,20 +165,37 @@ class ProcessingElement{
     // int id;
     // int location_x;
     // int location_y;
+    public:
     vector<Task> processingElementSchedule;
+
+    ProcessingElement(){
+        Task dummy_task = Task(0);
+        vector<Task> zeroSchedule(10000, dummy_task);
+        this->processingElementSchedule = zeroSchedule;
+    }
+
+    void print(){
+        for(int i = 0; i<20;i++){
+            cout<<this->processingElementSchedule[i].getTaskId()<<endl;
+        }
+    }
+
+    pair<int, int> allocateProcessor(int taskId, int earliestTime, int exectionTime);
 };
+
 
 class Node{
     // int id;
     int locationX;
     int locationY;
     Router router;
-    ProcessingElement processingElement;
+    
 
     friend class NoC;
     friend class MessageFlit;
 
     public:
+    ProcessingElement processingElement;
     Node(int y, int x){
         this->locationX = x;
         this->locationY = y;
@@ -174,16 +207,22 @@ class Node{
     int getLocationY(){
         return locationY;
     }
+    pair<int, int> getLocation(){
+        return pair<int, int>(locationY, locationX);
+    }
 };
 
 class NoC{
     int n;
-    vector<Node> nodes;
+    
     friend class MessageFlit;
     
     public: 
+    vector<Node> nodes;
     NoC(int n){
         this->n = n;
+        Node dummy_node = Node(0, 0);
+        nodes.push_back(dummy_node);
         for (int i = 1; i <= n; i++){
             for (int j = 1; j <= n ; j++){
                 Node new_node = Node(i, j);
@@ -197,74 +236,15 @@ class NoC{
     int getN(){
         return n;
     }
-
+    
     void print(){
-        for (int i = 0; i < n*n; i++){
-            cout << nodes[i].getLocationX() << " " << nodes[i].getLocationY() << endl;
+        for (int i = 1; i <= n*n; i++){
+            cout << nodes[i].getLocationY() << " " << nodes[i].getLocationX() << endl;
         }
     }
 };
 
 
-NoC MessageFlit::routeXY(NoC noc, MessageFlit flit, Node sourceNode, Node destinationNode, int startTime){
-    int sourceNodeX = sourceNode.getLocationX();
-    int sourceNodeY = sourceNode.getLocationY();
-    int currentX = sourceNodeX;
-    int currentY = sourceNodeY;
-    int destinationNodeX = destinationNode.getLocationX();
-    int destinationNodeY = destinationNode.getLocationY();
-    int time = startTime;
-    cout<<"ID : m_"<<flit.message_id<<"_"<<flit.id<<endl;
-    cout<<"PATH : ";
-    cout<<"("<<currentY<<","<<currentX<<") ";
-    while(true){    
-        
-        if (currentX == destinationNodeX && currentY == destinationNodeY){
-            cout<<endl;
-            cout<<"TIME : "<<time<<endl;
-            cout<<"---------------------------------"<<endl;
-            return noc;
-        }
-        else if(currentX < destinationNodeX){
-            if (currentX == sourceNodeX){
-                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, EAST);
-            }
-            else{
-                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.westPort.updateSchedule(time, flit, EAST);
-            }
-            currentX++;
-        }else if (currentX > destinationNodeX){
-            if (currentX == sourceNodeX){
-                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, WEST);
-            }
-            else{
-                time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.eastPort.updateSchedule(time, flit, WEST);
-            }
-            currentX--;
-        }else if (currentX == destinationNodeX){
-            if (currentY < destinationNodeY){
-                if (currentY == sourceNodeY){
-                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, SOUTH);
-                }
-                else{
-                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.northPort.updateSchedule(time, flit, SOUTH);
-                }
-                currentY++;
-            }
-            else if (currentY > destinationNodeY){
-                if (currentY == sourceNodeY){
-                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.localPort.updateSchedule(time, flit, NORTH);
-                }
-                else{
-                    time += noc.nodes[(currentY-1) * noc.getN() + currentX - 1].router.southPort.updateSchedule(time, flit, NORTH);
-                }
-                currentY--;
-            }
-        }
-        cout<<"-> ("<<currentY<<","<<currentX<<") ";
-    }
-    return noc;
-}
 
 double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1000], map<int, double> task_ranks, int task_id){
     bool sink_node = true;
@@ -323,7 +303,27 @@ vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_t
     return task_priority_list;
 }
 
-
+pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime, int exectionTime){
+    Task allotedTask = Task(taskId);
+    int startTime;
+    int endTime;
+    int count = 0;
+    for (int i = earliestTime; i < 10000; i++) {
+        if (this->processingElementSchedule[i].getTaskId() == 0) {
+            count++;
+            if (count == exectionTime) {
+                for (int j = i - exectionTime + 1; j <= i; ++j) {
+                    this->processingElementSchedule[j] = allotedTask;
+                    startTime = j;
+                }
+                endTime = startTime + exectionTime;
+                break;
+            }
+        } else {
+            count = 0;
+        }
+    }
+}
 
 
 
@@ -388,7 +388,34 @@ int main() {
 
 
 
-    // NoC noc = NoC(n);
+    NoC noc = NoC(n);
+    for(int i = 0; i<task_priority_list.size();i++){
+        
+        if (i==0){
+            int min_exec_time_proccesor_id = 0;
+            int min_exec_time = INT_MAX;
+            for (int j = 1; j<=n*n ; j++){
+                if (min_exec_time > execution_time_matrix[task_priority_list[i]][j]){
+                    min_exec_time_proccesor_id = j;
+                    min_exec_time = execution_time_matrix[task_priority_list[i]][j];
+                }
+            }
+            noc.nodes[min_exec_time_proccesor_id].processingElement.allocateProcessor(task_priority_list[i], 0, execution_time_matrix[task_priority_list[i]][min_exec_time_proccesor_id]);
+        }else{  
+            vector<Node> possible_nodes;
+
+        }
+        // cout<<i+1<<"th task possiblities"<<endl;
+        // for (auto possible_node : possible_nodes){
+        //     cout<<possible_node.getLocation().first<<" "<<possible_node.getLocation().second<<endl;
+        // }
+    }
+
+
+
+
+
+
     // // noc.print();
     // Message m_12 = Message(1, 2, 3);
     // MessageFlit m_12_1 = m_12.getFlit(1);
@@ -407,7 +434,3 @@ int main() {
     #endif 
     return 0;
 }
-
-
-
-
