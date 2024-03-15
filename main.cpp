@@ -180,7 +180,8 @@ class ProcessingElement{
         }
     }
 
-    pair<int, int> allocateProcessor(int taskId, int earliestTime, int exectionTime);
+    int getEarliestAvailTime(int currentTime, int executionTime);
+    pair<int, int> allocateProcessor(int taskId, int earliestTime, int executionTime);
 };
 
 
@@ -242,6 +243,8 @@ class NoC{
             cout << nodes[i].getLocationY() << " " << nodes[i].getLocationX() << endl;
         }
     }
+
+    vector<int> getNeighbors(int nodeId);
 };
 
 
@@ -303,21 +306,16 @@ vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_t
     return task_priority_list;
 }
 
-pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime, int exectionTime){
-    Task allotedTask = Task(taskId);
-    int startTime;
-    int endTime;
+
+int ProcessingElement::getEarliestAvailTime(int currentTime, int executionTime){
     int count = 0;
-    for (int i = earliestTime; i < 10000; i++) {
+    int earliestAvailTime = 0;
+    for (int i = currentTime; i < 10000; i++) {
         if (this->processingElementSchedule[i].getTaskId() == 0) {
             count++;
-            if (count == exectionTime) {
-                for (int j = i - exectionTime + 1; j <= i; ++j) {
-                    this->processingElementSchedule[j] = allotedTask;
-                    startTime = j;
-                }
-                endTime = startTime + exectionTime;
-                break;
+            if (count == executionTime) {
+                earliestAvailTime = i - executionTime + 1;
+                return earliestAvailTime;
             }
         } else {
             count = 0;
@@ -325,6 +323,54 @@ pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime,
     }
 }
 
+pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime, int executionTime){
+    Task allotedTask = Task(taskId);
+    int startTime;
+    int endTime;
+    int count = 0;
+    for (int i = earliestTime; i < 10000; i++) {
+        if (this->processingElementSchedule[i].getTaskId() == 0) {
+            count++;
+            if (count == executionTime) {
+                for (int j = i - executionTime + 1; j <= i; ++j) {
+                    this->processingElementSchedule[j] = allotedTask;
+                    startTime = j;
+                }
+                endTime = startTime + executionTime;
+                break;
+            }
+        } else {
+            count = 0;
+        }
+    }
+    return pair<int,int> (startTime, endTime);
+}
+
+
+vector<int> getPredTaskIds(int taskId, int task_graph[1000][1000]){
+    vector<int> pred_task_ids;
+    for (int i = 1; i <= no_of_tasks; i++) {
+        if (task_graph[i][taskId]!=0)pred_task_ids.push_back(i);
+    }
+    return pred_task_ids;
+}
+
+vector<int> NoC::getNeighbors(int nodeId){
+    vector<int> neighbors;
+     int row = (nodeId - 1) / n;
+    int col = (nodeId - 1) % n;
+
+    if (row > 0)  // North neighbor
+        neighbors.push_back(nodeId - n);
+    if (row < n - 1)  // South neighbor
+        neighbors.push_back(nodeId + n);
+    if (col > 0)  // West neighbor
+        neighbors.push_back(nodeId - 1);
+    if (col < n - 1)  // East neighbor
+        neighbors.push_back(nodeId + 1);
+
+    return neighbors;
+}
 
 
 
@@ -342,6 +388,7 @@ int main() {
     int task_graph[1000][1000];
     int execution_time_matrix[1000][1000];
     vector<int> task_priority_list(1000, 0);
+    map<int, int> task_processor_mappings;
 
     // cout<<"Enter the size of n x n mesh NoC:";
     cin>>n;
@@ -389,8 +436,7 @@ int main() {
 
 
     NoC noc = NoC(n);
-    for(int i = 0; i<task_priority_list.size();i++){
-        
+    for(int i = 0; i<=task_priority_list.size();i++){
         if (i==0){
             int min_exec_time_proccesor_id = 0;
             int min_exec_time = INT_MAX;
@@ -401,10 +447,23 @@ int main() {
                 }
             }
             noc.nodes[min_exec_time_proccesor_id].processingElement.allocateProcessor(task_priority_list[i], 0, execution_time_matrix[task_priority_list[i]][min_exec_time_proccesor_id]);
-        }else{  
-            vector<Node> possible_nodes;
+            task_processor_mappings[task_priority_list[i]] = min_exec_time_proccesor_id;
+            cout<<"task "<<task_priority_list[i]<<" has been alloted to "<<min_exec_time_proccesor_id<<endl;
+        }else{
+            vector<int> possible_processors;
+            vector<int> pred_task_ids;
 
+            pred_task_ids = getPredTaskIds(task_priority_list[i], task_graph);
+            for (auto pred_task_id : pred_task_ids){
+                possible_processors.push_back(task_processor_mappings[pred_task_id]);
+                vector<int> neighbors;
+                neighbors = noc.getNeighbors(task_processor_mappings[pred_task_id]);
+                for (auto neighbor :neighbors)possible_processors.push_back(neighbor);
+            }
+            set<int> unique_processors(possible_processors.begin(), possible_processors.end());
+            possible_processors.assign(unique_processors.begin(), unique_processors.end());
         }
+
         // cout<<i+1<<"th task possiblities"<<endl;
         // for (auto possible_node : possible_nodes){
         //     cout<<possible_node.getLocation().first<<" "<<possible_node.getLocation().second<<endl;
