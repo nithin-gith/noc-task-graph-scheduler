@@ -7,7 +7,7 @@ using namespace std;
 
 const int N = 10000;
 
-
+int getNoOfFlits(int messageSize);
 
 class NoC;
 class Node;
@@ -42,10 +42,10 @@ class Task{
 class MessageFlit{
 
     int id;
-    int message_id;
+    string message_id;
 
     public:
-    MessageFlit(int id, int message_id){
+    MessageFlit(int id, string message_id){
         this->id = id;
         this->message_id = message_id;
     }
@@ -56,26 +56,31 @@ class MessageFlit{
 
 class Message{
 
-    int id;
+    public:
+
+    string id;
     int sourceTaskId;
     int destinationTaskID;
     int messageSize;
     vector<MessageFlit> flits;
 
-    public:
+
     Message(int sourceTaskId, int destinationTaskID, int messageSize){
-        this->id = 10 * sourceTaskId + destinationTaskID;
+        this->id = to_string(sourceTaskId * 100)  + to_string(destinationTaskID);
         this->sourceTaskId = sourceTaskId;
         this->destinationTaskID = destinationTaskID;
         this->messageSize = messageSize;
-        for (int i = 1; i <= messageSize ; i++){
+        MessageFlit dummy_flit = MessageFlit(0, "0");
+        flits.push_back(dummy_flit);
+        int no_of_flits = getNoOfFlits(messageSize);
+        for (int i = 1; i <= no_of_flits; i++){
             MessageFlit new_flit = MessageFlit(i, id);
             flits.push_back(new_flit);
         }
     }
 
     MessageFlit getFlit(int i){
-        return flits[i-1];
+        return flits[i];
     }
 
 
@@ -93,8 +98,8 @@ class UnitPortSlot{
     friend class MessageFlit;
     
     public:
-    UnitPortSlot() : messageFlit(0, 0), direction(NONE){
-        messageFlit = MessageFlit(0, 0);
+    UnitPortSlot() : messageFlit(0, "0"), direction(NONE){
+        messageFlit = MessageFlit(0, "0");
         direction = NONE;
     }
 };
@@ -245,6 +250,7 @@ class NoC{
     }
 
     vector<int> getNeighbors(int nodeId);
+    vector<Message> getMessagePriorityList(int taskId, int tentProcessorId, int task_graph[1000][1000], map<int, int> task_processor_mappings);
 };
 
 
@@ -280,7 +286,7 @@ double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1
     return 0.0;
 }
 
-bool sortByValue(const std::pair<int, int>& a, const std::pair<int, int>& b) {
+bool sortByDecreasingValue(const std::pair<int, int>& a, const std::pair<int, int>& b) {
     return a.second > b.second; // Sort in descending order of ranks
 }
 
@@ -297,7 +303,7 @@ vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_t
         task_ranks[i] = getTaskRank(task_graph, execution_time_matrix,task_ranks, i);
     }
     vector<pair<int, double> > taskid_rank_pairs(task_ranks.begin(), task_ranks.end());
-    sort(taskid_rank_pairs.begin(), taskid_rank_pairs.end(), sortByValue);
+    sort(taskid_rank_pairs.begin(), taskid_rank_pairs.end(), sortByDecreasingValue);
 
     for (auto taskid_rank_pair : taskid_rank_pairs){
         task_priority_list.push_back(taskid_rank_pair.first);
@@ -371,6 +377,45 @@ vector<int> NoC::getNeighbors(int nodeId){
 
     return neighbors;
 }
+
+int getNoOfFlits(int messageSize){
+    if (messageSize%b_w == 0){
+        return messageSize/b_w;
+    }
+    return messageSize/b_w + 1;
+}
+
+vector<Message> NoC::getMessagePriorityList(int taskId, int tentProcessorId, int task_graph[1000][1000], map<int, int> task_processor_mappings){
+    
+    vector<Message> message_priority_list;
+    vector<int> pred_task_ids;
+    pred_task_ids = getPredTaskIds(taskId, task_graph);
+    map<int, int> message_ranks;
+
+    for (auto pred_task_id : pred_task_ids){
+        int no_of_flits = getNoOfFlits(task_graph[pred_task_id][taskId]); // f value
+        int pred_task_processor_id = task_processor_mappings[pred_task_id];
+
+        int x_loc_pred_task = pred_task_processor_id % n;
+        int y_loc_pred_task = pred_task_processor_id / n + 1;
+        int x_loc = tentProcessorId % n;
+        int y_loc = tentProcessorId / n + 1;
+
+        int shortest_distance = abs(x_loc - x_loc_pred_task) + abs(y_loc - y_loc_pred_task); // k value
+
+        message_ranks[pred_task_id] = no_of_flits + shortest_distance;
+    }
+    vector<pair<int, int> > message_rank_pairs(message_ranks.begin(), message_ranks.end());
+    sort(message_rank_pairs.begin(), message_rank_pairs.end(), sortByDecreasingValue);
+
+    for (auto message_rank_pair : message_rank_pairs){
+        Message message = Message(message_rank_pair.first, taskId, task_graph[message_rank_pair.first][taskId]);
+        message_priority_list.push_back(message);
+    }
+    return message_priority_list;
+}
+
+
 
 
 
