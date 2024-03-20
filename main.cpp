@@ -327,6 +327,7 @@ int ProcessingElement::getEarliestAvailTime(int currentTime, int executionTime){
             count = 0;
         }
     }
+    return earliestAvailTime;
 }
 
 pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime, int executionTime){
@@ -415,9 +416,77 @@ vector<Message> NoC::getMessagePriorityList(int taskId, int tentProcessorId, int
     return message_priority_list;
 }
 
+vector<vector<int>> generateShortestPath(int source, int dest) {
 
 
+    vector<vector<int>> grid(n, vector<int>(n));
+    int count = 1;
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+            grid[i][j] = count++;
+        }
+    }
 
+
+    vector<int> dx = {-1, 1, 0, 0};
+    vector<int> dy = {0, 0, -1, 1};
+
+
+    queue<vector<int>> q;
+
+
+    unordered_map<int, vector<vector<int>>> shortest_path_from_source;
+
+
+    q.push({source});
+    shortest_path_from_source[source] = {{source}};
+
+
+    while (!q.empty()) {
+        vector<int> curr = q.front();
+        q.pop();
+        int last_node = curr.back();
+
+        if (last_node == dest) continue; 
+
+        int x = (last_node - 1) / n;
+        int y = (last_node - 1) % n;
+
+
+        for (int k = 0; k < 4; ++k) {
+            int nx = x + dx[k];
+            int ny = y + dy[k];
+            if (nx >= 0 && nx < n && ny >= 0 && ny < n) {
+                int neighbor_node = grid[nx][ny];
+                if (shortest_path_from_source.find(neighbor_node) == shortest_path_from_source.end() ||
+                    shortest_path_from_source[neighbor_node][0].size() == curr.size() + 1) {
+                    vector<int> new_path = curr;
+                    new_path.push_back(neighbor_node);
+                    shortest_path_from_source[neighbor_node].push_back(new_path);
+                    q.push(new_path);
+                }
+            }
+        }
+    }
+
+    // Return all shortest paths from source to destination
+    return shortest_path_from_source[dest];
+}
+
+map<string, vector<vector<int> > > generateShortestPaths(){
+    map<string, vector<vector<int> > > shortest_paths_map;
+    for(int i = 1 ; i<=n * n ;i++){
+        for(int j = 1 ; j<=n * n;j++){
+            if (i == j)continue;
+            else{
+                string route_id = to_string(i * 100) + to_string(j);
+                shortest_paths_map[route_id] = generateShortestPath(i, j);
+            }
+        }
+    }
+
+    return shortest_paths_map;
+}
 
 int main() {
     IOS
@@ -434,6 +503,8 @@ int main() {
     int execution_time_matrix[1000][1000];
     vector<int> task_priority_list(1000, 0);
     map<int, int> task_processor_mappings;
+
+    map<string, vector<vector<int>>> shortest_paths = generateShortestPaths();
 
     // cout<<"Enter the size of n x n mesh NoC:";
     cin>>n;
