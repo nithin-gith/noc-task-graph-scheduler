@@ -41,10 +41,11 @@ class Task{
 
 class MessageFlit{
 
-    int id;
-    string message_id;
+    
 
     public:
+    int id;
+    string message_id;
     MessageFlit(int id, string message_id){
         this->id = id;
         this->message_id = message_id;
@@ -98,7 +99,7 @@ class UnitPortSlot{
     friend class MessageFlit;
     
     public:
-    UnitPortSlot() : messageFlit(0, "0"), direction(NONE){
+            UnitPortSlot() : messageFlit(0, "0"), direction(NONE){
         messageFlit = MessageFlit(0, "0");
         direction = NONE;
     }
@@ -106,11 +107,11 @@ class UnitPortSlot{
 
 
 class Port{
-    vector<UnitPortSlot> portSchedule;
+        vector<UnitPortSlot> portSchedule;
 
     friend class Router;
     friend class MessageFlit;
-    
+
     public:
     Port() : portSchedule(10000) {
     }
@@ -136,6 +137,12 @@ class Port{
         }
         return updatedTime - time + 1;   
     }
+
+    void print(int t){
+        for (int i = 0 ;i < t; i++){
+            cout<<portSchedule[i].messageFlit.message_id<<"_"<<portSchedule[i].messageFlit.id<<":"<<portSchedule[i].direction<<endl;
+        }
+    }
 };
 
 class Router{
@@ -148,13 +155,19 @@ class Router{
     Router *eastNeighbour;
     Router *westNeighbour;
 
+
+
+    friend class Node;
+    friend class MessageFlit;
+    
+    public:
     Port northPort;
     Port southPort;
     Port eastPort;
     Port westPort;
     Port localPort;
 
-    friend class Node;
+friend class Node;
     friend class MessageFlit;
     
     public:
@@ -163,6 +176,7 @@ class Router{
         southPort = Port();
         eastPort = Port();
         westPort = Port();
+        localPort = Port();
     }
 };
 
@@ -194,13 +208,14 @@ class Node{
     // int id;
     int locationX;
     int locationY;
-    Router router;
+    
     
 
     friend class NoC;
     friend class MessageFlit;
 
     public:
+    Router router;
     ProcessingElement processingElement;
     Node(int y, int x){
         this->locationX = x;
@@ -488,6 +503,95 @@ map<string, vector<vector<int> > > generateShortestPaths(){
     return shortest_paths_map;
 }
 
+Direction getDirection(int sourceNodeId, int neighborNodeId){
+    if (sourceNodeId + 1 == neighborNodeId) return EAST;
+    else if(sourceNodeId - 1 == neighborNodeId) return WEST;
+    else if(sourceNodeId + n == neighborNodeId) return SOUTH;
+    else if(sourceNodeId - n == neighborNodeId) return NORTH;
+    return NONE;
+}
+
+
+
+
+int getEarliestMessageTransmissionTime(Message m_ij, NoC noc, int sourceProcessorId, int destProcessorId, map<string, vector<vector<int>>> all_shortest_paths, int startTime){
+    if (sourceProcessorId == destProcessorId) return 0;
+
+
+    int shortest_transmission_time_message = 0;
+    vector<vector<int>> shortest_paths = all_shortest_paths[ to_string(sourceProcessorId * 100) + to_string(destProcessorId)]; 
+
+    int no_of_flits = getNoOfFlits(m_ij.messageSize);
+
+    for (int i = 1; i <= no_of_flits; i++){
+        int min_transmission_time_flit = INT_MAX;
+        vector<int> min_time_path_flit;
+        for (auto shortest_path : shortest_paths){
+            NoC noc_1 = noc;
+            int transmission_time_flit = 0;
+
+            for (int j = 0; j < shortest_path.size()-1; j++){
+                Direction neighbor_direction = getDirection(shortest_path[j], shortest_path[j+1]);
+                if (j == 0){
+                    transmission_time_flit += noc_1.nodes[shortest_path[j]].router.localPort.updateSchedule(startTime, m_ij.flits[i], neighbor_direction);
+                }
+                else{
+                    Direction source_direction = getDirection(shortest_path[j], shortest_path[j-1]);
+                    if (source_direction == NORTH){
+                        transmission_time_flit += noc_1.nodes[shortest_path[j]].router.northPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                    if (source_direction == EAST){
+                        transmission_time_flit += noc_1.nodes[shortest_path[j]].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                    if (source_direction == WEST){
+                        transmission_time_flit += noc_1.nodes[shortest_path[j]].router.westPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                    if (source_direction == SOUTH){
+                        transmission_time_flit += noc_1.nodes[shortest_path[j]].router.southPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                }
+                
+            }
+            
+            if (min_transmission_time_flit > transmission_time_flit) {
+                min_transmission_time_flit = transmission_time_flit;
+                min_time_path_flit = shortest_path;
+            }
+        }
+
+
+        min_transmission_time_flit = 0;
+        for (int j = 0; j < min_time_path_flit.size()-1; j++){
+                Direction neighbor_direction = getDirection(min_time_path_flit[j], min_time_path_flit[j+1]);
+                if (j == 0){
+                    min_transmission_time_flit += noc.nodes[min_time_path_flit[j]].router.localPort.updateSchedule(startTime, m_ij.flits[i], neighbor_direction);
+                }
+                else{
+                    Direction source_direction = getDirection(min_time_path_flit[j], min_time_path_flit[j-1]);
+                    if (source_direction == NORTH){
+                        min_transmission_time_flit += noc.nodes[min_time_path_flit[j]].router.northPort.updateSchedule(startTime + min_transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                    if (source_direction == EAST){
+                        min_transmission_time_flit += noc.nodes[min_time_path_flit[j]].router.eastPort.updateSchedule(startTime + min_transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                    if (source_direction == WEST){
+                        min_transmission_time_flit += noc.nodes[min_time_path_flit[j]].router.westPort.updateSchedule(startTime + min_transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                    if (source_direction == SOUTH){
+                        min_transmission_time_flit += noc.nodes[min_time_path_flit[j]].router.southPort.updateSchedule(startTime + min_transmission_time_flit, m_ij.flits[i], neighbor_direction);
+                    }
+                }
+            }
+
+        shortest_transmission_time_message = max(shortest_transmission_time_message, min_transmission_time_flit);
+        
+    }
+
+    
+    return shortest_transmission_time_message;
+}
+
+
 int main() {
     IOS
     #ifndef ONLINE_JUDGE
@@ -504,7 +608,7 @@ int main() {
     vector<int> task_priority_list(1000, 0);
     map<int, int> task_processor_mappings;
 
-    map<string, vector<vector<int>>> shortest_paths = generateShortestPaths();
+    
 
     // cout<<"Enter the size of n x n mesh NoC:";
     cin>>n;
@@ -548,7 +652,7 @@ int main() {
     // cout<<endl;
 
     task_priority_list = generateTaskPriorityList(task_graph, execution_time_matrix);
-
+    map<string, vector<vector<int>>> all_shortest_paths = generateShortestPaths();
 
 
     NoC noc = NoC(n);
@@ -586,9 +690,8 @@ int main() {
         // }
     }
 
-
-
-
+    int tes = getEarliestMessageTransmissionTime(Message(1, 2, 10), noc, 1,6, all_shortest_paths, 7);
+    cout<<tes<<endl;
 
 
     // // noc.print();
