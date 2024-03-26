@@ -1,4 +1,24 @@
-1
-2
-3
-4
+task : 2, processor :  2, eft : 29
+task : 2, processor :  3, eft : 27
+task : 2, processor :  6, eft : 28
+
+task : 3, processor :  2, eft : 31
+task : 3, processor :  3, eft : 39
+task : 3, processor :  6, eft : 34
+
+task : 4, processor :  1, eft : 49
+task : 4, processor :  2, eft : 48
+task : 4, processor :  3, eft : 47
+task : 4, processor :  5, eft : 52
+task : 4, processor :  6, eft : 52
+
+FINAL ALLOCATION, START AND END TIMES
+
+TASK - 1(processor : 3)
+0 12
+TASK - 2(processor : 3)
+12 27
+TASK - 3(processor : 2)
+17 31
+TASK - 4(processor : 3)
+34 47
