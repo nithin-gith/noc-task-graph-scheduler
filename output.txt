@@ -1,24 +1,81 @@
-task : 2, processor :  2, eft : 29
-task : 2, processor :  3, eft : 27
-task : 2, processor :  6, eft : 28
+0 21 14 10 0 0 0 0 0 
+0 0 0 0 29 0 0 0 0 
+0 0 0 0 0 24 0 0 0 
+0 0 0 0 0 0 22 0 0 
+0 0 0 0 0 29 23 0 0 
+0 0 0 0 0 0 0 17 0 
+0 0 0 0 0 0 0 0 12 
+0 0 0 0 0 0 0 0 15 
+0 0 0 0 0 0 0 0 0 
+Execution time matrix
+12 26 12 11 16 13 11 20 30 27 27 19 13 14 22 10 
+24 22 12 15 27 28 28 11 13 26 14 20 12 22 18 13 
+30 11 30 10 26 26 12 27 18 23 14 20 18 28 11 19 
+23 22 11 15 13 14 25 30 19 26 22 26 21 16 16 29 
+22 11 14 28 22 20 20 11 22 20 16 26 19 24 20 16 
+26 15 24 24 27 18 20 28 27 26 11 27 29 22 13 28 
+19 24 12 28 19 13 11 12 19 27 19 30 22 25 26 19 
+10 12 13 28 17 26 18 12 27 15 18 18 23 24 14 19 
+15 16 15 25 16 18 22 15 21 10 18 28 24 23 12 26 
 
-task : 3, processor :  2, eft : 31
-task : 3, processor :  3, eft : 39
-task : 3, processor :  6, eft : 34
+task : 2, processor :  12, eft : 51
+task : 2, processor :  15, eft : 49
+task : 2, processor :  16, eft : 23
 
-task : 4, processor :  1, eft : 49
-task : 4, processor :  2, eft : 48
-task : 4, processor :  3, eft : 47
-task : 4, processor :  5, eft : 52
-task : 4, processor :  6, eft : 52
+task : 5, processor :  12, eft : 78
+task : 5, processor :  15, eft : 72
+task : 5, processor :  16, eft : 39
+
+task : 3, processor :  12, eft : 44
+task : 3, processor :  15, eft : 35
+task : 3, processor :  16, eft : 58
+
+task : 4, processor :  12, eft : 60
+task : 4, processor :  15, eft : 51
+task : 4, processor :  16, eft : 68
+
+task : 6, processor :  11, eft : 80
+task : 6, processor :  12, eft : 95
+task : 6, processor :  14, eft : 91
+task : 6, processor :  15, eft : 81
+task : 6, processor :  16, eft : 87
+
+task : 8, processor :  7, eft : 115
+task : 8, processor :  10, eft : 112
+task : 8, processor :  11, eft : 98
+task : 8, processor :  12, eft : 115
+task : 8, processor :  15, eft : 111
+
+task : 7, processor :  11, eft : 117
+task : 7, processor :  12, eft : 121
+task : 7, processor :  14, eft : 117
+task : 7, processor :  15, eft : 117
+task : 7, processor :  16, eft : 100
+
+task : 9, processor :  7, eft : 136
+task : 9, processor :  10, eft : 124
+task : 9, processor :  11, eft : 131
+task : 9, processor :  12, eft : 141
+task : 9, processor :  15, eft : 125
+task : 9, processor :  16, eft : 140
 
 FINAL ALLOCATION, START AND END TIMES
 
-TASK - 1(processor : 3)
-0 12
-TASK - 2(processor : 3)
-12 27
-TASK - 3(processor : 2)
-17 31
-TASK - 4(processor : 3)
-34 47
+TASK - 1(processor : 16)
+0 10
+TASK - 2(processor : 16)
+10 23
+TASK - 5(processor : 16)
+23 39
+TASK - 3(processor : 15)
+24 35
+TASK - 4(processor : 15)
+35 51
+TASK - 6(processor : 11)
+69 80
+TASK - 8(processor : 11)
+80 98
+TASK - 7(processor : 16)
+81 100
+TASK - 9(processor : 10)
+114 124

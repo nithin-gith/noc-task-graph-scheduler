@@ -641,35 +641,44 @@ int main() {
     for (int i = 1; i <= no_of_tasks; i++) {
         for (int j = 1; j <= no_of_tasks; j++) {
             cin >> task_graph[i][j];
+            if (task_graph[i][j] == 1){
+                task_graph[i][j] = rand() % 21 + 10;
+            }
         }
+    }
+     for (int i = 1; i <= no_of_tasks; i++) {
+        for (int j = 1; j <= no_of_tasks; j++) {
+            cout<<task_graph[i][j]<<" ";
+        }
+        cout<<endl;
     }
 
 
     // input execution times
-    for (int i = 1; i <= no_of_tasks; i++) {
-       for (int j = 1; j <= n * n ; j++) {
-            cin >> execution_time_matrix[i][j];
-        }
-    }
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //    for (int j = 1; j <= n * n ; j++) {
+    //         cin >> execution_time_matrix[i][j];
+    //     }
+    // }
 
                 // OR
 
     // generate random execution times
-    // for (int i = 1; i <= no_of_tasks; i++) {
-    //     for (int j = 0; j < n * n ; j++) {
-    //         execution_time_matrix[i][j] = rand() % 21 + 10;
-    //     }
-    // }
+    for (int i = 1; i <= no_of_tasks; i++) {
+        for (int j = 1; j <= n * n ; j++) {
+            execution_time_matrix[i][j] = rand() % 21 + 10;
+        }
+    }
 
-    // cout<<"Execution time matrix"<<endl;
+    cout<<"Execution time matrix"<<endl;
 
-    // for (int i = 1; i <= no_of_tasks; i++) {
-    //     for (int j = 1; j <= n * n ; j++) {
-    //         cout<<execution_time_matrix[i][j]<<" ";
-    //     }
-    //     cout<<endl;
-    // }
-    // cout<<endl;
+    for (int i = 1; i <= no_of_tasks; i++) {
+        for (int j = 1; j <= n * n ; j++) {
+            cout<<execution_time_matrix[i][j]<<" ";
+        }
+        cout<<endl;
+    }
+    cout<<endl;
 
 
     // creating task priority list
@@ -753,7 +762,7 @@ int main() {
         cout<<"TASK - "<<task<<"(processor : "<<task_processor_mappings[task]<<")"<<endl;
         cout<<tasks_start_end_times[task].first<<" "<<tasks_start_end_times[task].second<<endl;
     }
-    
+
 
 
     #ifndef ONLINE_JUDGE
