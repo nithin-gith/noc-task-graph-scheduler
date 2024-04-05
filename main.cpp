@@ -65,8 +65,10 @@ class Message{
     int messageSize;
     vector<MessageFlit> flits;
 
-
+    // intialising the message 
     Message(int sourceTaskId, int destinationTaskID, int messageSize){
+        // message id is 100 * source task id + dest task id 
+        // ex : message from task 1 to task 2 is m_1002 
         this->id = to_string(sourceTaskId * 100)  + to_string(destinationTaskID);
         this->sourceTaskId = sourceTaskId;
         this->destinationTaskID = destinationTaskID;
@@ -117,6 +119,7 @@ class Port{
     }
 
     int updateSchedule (int time, MessageFlit flit, Direction direction){
+        // this function updates the router's port with message flit at earliest vacant time and returns the time
         int updatedTime = time;
         if (portSchedule[updatedTime].direction == NONE){// slot is empty
             portSchedule[updatedTime].messageFlit = flit;
@@ -149,13 +152,6 @@ class Router{
     // int id;
     // int location_x;
     // int location_y;
-    
-    Router *northNeighbour;
-    Router *southNeighbour; 
-    Router *eastNeighbour;
-    Router *westNeighbour;
-
-
 
     friend class Node;
     friend class MessageFlit;
@@ -240,6 +236,7 @@ class NoC{
     
     public: 
     vector<Node> nodes;
+    // intialising the noc architecture
     NoC(int n){
         this->n = n;
         Node dummy_node = Node(0, 0);
@@ -271,6 +268,7 @@ class NoC{
 
 
 double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1000], map<int, double> task_ranks, int task_id){
+    // this fucntion returns the task rank for a given task
     bool sink_node = true;
 
     if (task_ranks[task_id] != 0) return task_ranks[task_id];
@@ -292,6 +290,7 @@ double getTaskRank(int task_graph[1000][1000], int execution_time_matrix[1000][1
     else{
         // max_succ_task_rank = P(T_j) + CC_i,j Tj is successor of Ti
         double max_succ_task_rank = 0;
+        // recursively calling this function to calculate the ranks of all the tasks
         for (int i = 1; i<= no_of_tasks; i++){
             if (task_graph[task_id][i]!=0) max_succ_task_rank = max(max_succ_task_rank, getTaskRank(task_graph, execution_time_matrix, task_ranks, i) + task_graph[task_id][i]);
         }
@@ -311,12 +310,15 @@ vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_t
     vector<int> task_priority_list;
     map<int, double> avg_exec_times;
     
+    // this is the function to calculate the task priority list for given task graph
     for (int i = 1; i<= no_of_tasks; i++){
         task_ranks[i] = 0;
     }
     for (int i = 1; i<=no_of_tasks ; i++){
         task_ranks[i] = getTaskRank(task_graph, execution_time_matrix,task_ranks, i);
     }
+    
+    // sorting the tasks based on decreasing order of their ranks
     vector<pair<int, double> > taskid_rank_pairs(task_ranks.begin(), task_ranks.end());
     sort(taskid_rank_pairs.begin(), taskid_rank_pairs.end(), sortByDecreasingValue);
 
@@ -329,6 +331,7 @@ vector<int> generateTaskPriorityList(int task_graph[1000][1000], int execution_t
 
 
 int ProcessingElement::getEarliestAvailTime(int currentTime, int executionTime){
+    // this function returns the earlisest avail time for an processor
     int count = 0;
     int earliestAvailTime = 0;
     for (int i = currentTime; i < 10000; i++) {
@@ -350,6 +353,7 @@ pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime,
     int startTime = 0;
     int endTime = 0;
     int count = 0;
+    // this function allocates the task to processor after checking vacancy and allocates at earliest avail time
     for (int i = earliestTime; i < 10000; i++) {
         if (this->processingElementSchedule[i].getTaskId() == 0) {
             count++;
@@ -370,6 +374,7 @@ pair<int,int> ProcessingElement::allocateProcessor(int taskId, int earliestTime,
 
 
 vector<int> getPredTaskIds(int taskId, int task_graph[1000][1000]){
+    // this function returns the predecessor task ids of a given task in task graph
     vector<int> pred_task_ids;
     for (int i = 1; i <= no_of_tasks; i++) {
         if (task_graph[i][taskId]!=0)pred_task_ids.push_back(i);
@@ -379,7 +384,7 @@ vector<int> getPredTaskIds(int taskId, int task_graph[1000][1000]){
 
 vector<int> NoC::getNeighbors(int nodeId){
     vector<int> neighbors;
-     int row = (nodeId - 1) / n;
+    int row = (nodeId - 1) / n;
     int col = (nodeId - 1) % n;
 
     if (row > 0)  // North neighbor
@@ -395,6 +400,7 @@ vector<int> NoC::getNeighbors(int nodeId){
 }
 
 int getNoOfFlits(int messageSize){
+    // this is function to calucate no of flits for given message size
     if (messageSize%b_w == 0){
         return messageSize/b_w;
     }
@@ -408,22 +414,28 @@ vector<Message> NoC::getMessagePriorityList(int taskId, int tentProcessorId, int
     pred_task_ids = getPredTaskIds(taskId, task_graph);
     map<int, int> message_ranks;
 
+
     for (auto pred_task_id : pred_task_ids){
-        int no_of_flits = getNoOfFlits(task_graph[pred_task_id][taskId]); // f value
+        // calculatin the no of flits in the message - f value
+        int no_of_flits = getNoOfFlits(task_graph[pred_task_id][taskId]); 
         int pred_task_processor_id = task_processor_mappings[pred_task_id];
 
+        // finding the x, y locations of the processors
         int x_loc_pred_task = pred_task_processor_id % n;
         int y_loc_pred_task = pred_task_processor_id / n + 1;
         int x_loc = tentProcessorId % n;
         int y_loc = tentProcessorId / n + 1;
 
+        // calculating manhattan distance between processors
         int shortest_distance = abs(x_loc - x_loc_pred_task) + abs(y_loc - y_loc_pred_task); // k value
 
         message_ranks[pred_task_id] = no_of_flits + shortest_distance;
     }
+    // sorting based on decreasing order of their ranks
     vector<pair<int, int> > message_rank_pairs(message_ranks.begin(), message_ranks.end());
     sort(message_rank_pairs.begin(), message_rank_pairs.end(), sortByDecreasingValue);
 
+    // creating msg priority list to return
     for (auto message_rank_pair : message_rank_pairs){
         Message message = Message(message_rank_pair.first, taskId, task_graph[message_rank_pair.first][taskId]);
         message_priority_list.push_back(message);
@@ -433,7 +445,7 @@ vector<Message> NoC::getMessagePriorityList(int taskId, int tentProcessorId, int
 
 vector<vector<int>> generateShortestPath(int source, int dest) {
 
-
+    // grid is just a 2d array from 1 to n^2
     vector<vector<int>> grid(n, vector<int>(n));
     int count = 1;
     for (int i = 0; i < n; ++i) {
@@ -442,11 +454,11 @@ vector<vector<int>> generateShortestPath(int source, int dest) {
         }
     }
 
-
+    // this (dx, dy) pairs denotes the neighbors
     vector<int> dx = {-1, 1, 0, 0};
     vector<int> dy = {0, 0, -1, 1};
 
-
+    // maintaining queue for bfs
     queue<vector<int>> q;
 
 
@@ -458,6 +470,7 @@ vector<vector<int>> generateShortestPath(int source, int dest) {
 
 
     while (!q.empty()) {
+        // using first route of the queue and last node of that route
         vector<int> curr = q.front();
         q.pop();
         int last_node = curr.back();
@@ -467,7 +480,7 @@ vector<vector<int>> generateShortestPath(int source, int dest) {
         int x = (last_node - 1) / n;
         int y = (last_node - 1) % n;
 
-
+        // exploring different possiblities and routes between nodes and updating shortest paths
         for (int k = 0; k < 4; ++k) {
             int nx = x + dx[k];
             int ny = y + dy[k];
@@ -489,6 +502,7 @@ vector<vector<int>> generateShortestPath(int source, int dest) {
 }
 
 map<string, vector<vector<int> > > generateShortestPaths(){
+    // generation shortest paths from all processors to all other processors
     map<string, vector<vector<int> > > shortest_paths_map;
     for(int i = 1 ; i<=n * n ;i++){
         for(int j = 1 ; j<=n * n;j++){
@@ -504,6 +518,7 @@ map<string, vector<vector<int> > > generateShortestPaths(){
 }
 
 Direction getDirection(int sourceNodeId, int neighborNodeId){
+    // to get the direction from source to neighbor in n x n architecture
     if (sourceNodeId + 1 == neighborNodeId) return EAST;
     else if(sourceNodeId - 1 == neighborNodeId) return WEST;
     else if(sourceNodeId + n == neighborNodeId) return SOUTH;
@@ -515,7 +530,9 @@ Direction getDirection(int sourceNodeId, int neighborNodeId){
 
 
 int routeMessage(Message m_ij, NoC &noc, int sourceProcessorId, int destProcessorId, map<string, vector<vector<int>>> all_shortest_paths, int startTime){
-    if (sourceProcessorId == destProcessorId) return 0;
+    // this function routes the given message on given noc and returns the end time of message transmission
+    
+    if (sourceProcessorId == destProcessorId) return startTime;
 
 
     int shortest_transmission_time_message = 0;
@@ -524,18 +541,20 @@ int routeMessage(Message m_ij, NoC &noc, int sourceProcessorId, int destProcesso
     int no_of_flits = getNoOfFlits(m_ij.messageSize);
 
     for (int i = 1; i <= no_of_flits; i++){
+
         int min_transmission_time_flit = INT_MAX;
         vector<int> min_time_path_flit;
         for (auto shortest_path : shortest_paths){
+            // tentiative routing to check for quickest path among shortest paths
             NoC noc_1 = noc;
             int transmission_time_flit = 0;
 
             for (int j = 0; j < shortest_path.size()-1; j++){
                 Direction neighbor_direction = getDirection(shortest_path[j], shortest_path[j+1]);
-                if (j == 0){
+                if (j == 0){ // if it is starting node then local port is updated
                     transmission_time_flit += noc_1.nodes[shortest_path[j]].router.localPort.updateSchedule(startTime, m_ij.flits[i], neighbor_direction);
                 }
-                else{
+                else{ // based on source message direction respective ports are updated
                     Direction source_direction = getDirection(shortest_path[j], shortest_path[j-1]);
                     if (source_direction == NORTH){
                         transmission_time_flit += noc_1.nodes[shortest_path[j]].router.northPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], neighbor_direction);
@@ -562,6 +581,7 @@ int routeMessage(Message m_ij, NoC &noc, int sourceProcessorId, int destProcesso
 
         min_transmission_time_flit = 0;
         for (int j = 0; j < min_time_path_flit.size()-1; j++){
+            // permanent routing to the quickest route possible on the previous step
                 Direction neighbor_direction = getDirection(min_time_path_flit[j], min_time_path_flit[j+1]);
                 if (j == 0){
                     min_transmission_time_flit += noc.nodes[min_time_path_flit[j]].router.localPort.updateSchedule(startTime, m_ij.flits[i], neighbor_direction);
@@ -602,7 +622,7 @@ int main() {
 
     srand(time(0));
     
-    
+    // intialising variables to store neccessary information
     int task_graph[1000][1000];
     int execution_time_matrix[1000][1000];
     vector<int> task_priority_list;
@@ -651,14 +671,18 @@ int main() {
     // }
     // cout<<endl;
 
+
+    // creating task priority list
     task_priority_list = generateTaskPriorityList(task_graph, execution_time_matrix);
+    
+    // computing all possible shortest paths and storing them in a map
     map<string, vector<vector<int>>> all_shortest_paths = generateShortestPaths();
     map<int, pair<int, int>> tasks_start_end_times;
 
 
     NoC noc = NoC(n);
     for(int i = 0; i<task_priority_list.size();i++){
-        if (i==0){
+        if (i==0){// if task is sink task
             int min_exec_time_proccesor_id = 0;
             int min_exec_time = INT_MAX;
             for (int j = 1; j<=n*n ; j++){
@@ -672,7 +696,8 @@ int main() {
         }else{
             vector<int> possible_processors;
             vector<int> pred_task_ids;
-
+            
+            // getting predecessor tasks ids and and processors and their neighbors
             pred_task_ids = getPredTaskIds(task_priority_list[i], task_graph);
             for (auto pred_task_id : pred_task_ids){
                 possible_processors.push_back(task_processor_mappings[pred_task_id]);
@@ -685,12 +710,13 @@ int main() {
 
             int min_eft = INT_MAX;
             int min_eft_possible_processor = 0;
+
             for (auto possible_processor : possible_processors){
-                // tentiative allocation 
+                // tentiative allocation to find optimal processor
                 int est = 0;
                 int actual_est = 0;
                 int eft = 0;
-                NoC noc_1 = noc;
+                NoC noc_1 = noc; // dummy noc to check possibility
                 vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], possible_processor, task_graph, task_processor_mappings);
                 for (auto msg : msg_priority_list){
                     int source_task_id = msg.sourceTaskId;
