@@ -640,7 +640,8 @@ int main() {
     int execution_time_matrix[1000][1000];
     vector<int> task_priority_list;
     map<int, int> task_processor_mappings;
-
+    // computing all possible shortest paths and storing them in a map
+    
     
 
     // cout<<"Enter the size of n x n mesh NoC:";
@@ -654,27 +655,16 @@ int main() {
     for (int i = 1; i <= no_of_tasks; i++) {
         for (int j = 1; j <= no_of_tasks; j++) {
             cin >> task_graph[i][j];
-            // if (task_graph[i][j] == 1){
-            //     task_graph[i][j] = rand() % 21 + 10;
-            // }
         }
     }
-
-    cout<<"Task Graph"<<endl;
-     for (int i = 1; i <= no_of_tasks; i++) {
-        for (int j = 1; j <= no_of_tasks; j++) {
-            cout<<task_graph[i][j]<<" ";
-        }
-        cout<<endl;
-    }
-
+    map<string, vector<vector<int>>> all_shortest_paths = generateShortestPaths();
 
     // input execution times
-    for (int i = 1; i <= no_of_tasks; i++) {
-       for (int j = 1; j <= n * n ; j++) {
-            cin >> execution_time_matrix[i][j];
-        }
-    }
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //    for (int j = 1; j <= n * n ; j++) {
+    //         cin >> execution_time_matrix[i][j];
+    //     }
+    // }
 
                 // OR
 
@@ -685,100 +675,123 @@ int main() {
     //     }
     // }
 
-    cout<<"Execution time matrix"<<endl;
+    // cout<<"Execution time matrix"<<endl;
 
-    for (int i = 1; i <= no_of_tasks; i++) {
-        for (int j = 1; j <= n * n ; j++) {
-            cout<<execution_time_matrix[i][j]<<" ";
-        }
-        cout<<endl;
-    }
-    cout<<endl;
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //     for (int j = 1; j <= n * n ; j++) {
+    //         cout<<execution_time_matrix[i][j]<<" ";
+    //     }
+    //     cout<<endl;
+    // }
+    // cout<<endl;
 
+    double total_makespan = 0.0;
+    double avg_makespan = 0.0;
+    for (int it = 1; it<=30;it++){
 
-    // creating task priority list
-    task_priority_list = generateTaskPriorityList(task_graph, execution_time_matrix);
-    
-    // computing all possible shortest paths and storing them in a map
-    map<string, vector<vector<int>>> all_shortest_paths = generateShortestPaths();
-    map<int, pair<int, int>> tasks_start_end_times;
-
-
-    NoC noc = NoC(n);
-    for(int i = 0; i<task_priority_list.size();i++){
-        if (i==0){// if task is sink task
-            int min_exec_time_proccesor_id = 0;
-            int min_exec_time = INT_MAX;
-            for (int j = 1; j<=n*n ; j++){
-                if (min_exec_time > execution_time_matrix[task_priority_list[i]][j]){
-                    min_exec_time_proccesor_id = j;
-                    min_exec_time = execution_time_matrix[task_priority_list[i]][j];
+        for (int i = 1; i <= no_of_tasks; i++) {
+            for (int j = 1; j <= no_of_tasks; j++) {
+                if(task_graph[i][j]!=0){
+                    task_graph[i][j] = rand() % 11 + 10;
                 }
             }
-            tasks_start_end_times[task_priority_list[i]] =  noc.nodes[min_exec_time_proccesor_id].processingElement.allocateProcessor(task_priority_list[i], 0, execution_time_matrix[task_priority_list[i]][min_exec_time_proccesor_id]);
-            task_processor_mappings[task_priority_list[i]] = min_exec_time_proccesor_id;
-        }else{
-            vector<int> possible_processors;
-            vector<int> pred_task_ids;
-            
-            // getting predecessor tasks ids and and processors and their neighbors
-            pred_task_ids = getPredTaskIds(task_priority_list[i], task_graph);
-            for (auto pred_task_id : pred_task_ids){
-                possible_processors.push_back(task_processor_mappings[pred_task_id]);
-                vector<int> neighbors;
-                neighbors = noc.getNeighbors(task_processor_mappings[pred_task_id]);
-                for (auto neighbor :neighbors)possible_processors.push_back(neighbor);
+        }
+
+        for (int i = 1; i <= no_of_tasks; i++) {
+            for (int j = 1; j <= n * n ; j++) {
+                execution_time_matrix[i][j] = rand() % 21 + 10;
             }
-            set<int> unique_processors(possible_processors.begin(), possible_processors.end());
-            possible_processors.assign(unique_processors.begin(), unique_processors.end());
+        }
 
-            int min_eft = INT_MAX;
-            int min_eft_possible_processor = 0;
+        // creating task priority list
+        task_priority_list = generateTaskPriorityList(task_graph, execution_time_matrix);
+        
+        
+        
+        map<int, pair<int, int>> tasks_start_end_times;
 
-            for (auto possible_processor : possible_processors){
-                // tentiative allocation to find optimal processor
+
+        NoC noc = NoC(n);
+        for(int i = 0; i<task_priority_list.size();i++){
+            if (i==0){// if task is sink task
+                int min_exec_time_proccesor_id = 0;
+                int min_exec_time = INT_MAX;
+                for (int j = 1; j<=n*n ; j++){
+                    if (min_exec_time > execution_time_matrix[task_priority_list[i]][j]){
+                        min_exec_time_proccesor_id = j;
+                        min_exec_time = execution_time_matrix[task_priority_list[i]][j];
+                    }
+                }
+                tasks_start_end_times[task_priority_list[i]] =  noc.nodes[min_exec_time_proccesor_id].processingElement.allocateProcessor(task_priority_list[i], 0, execution_time_matrix[task_priority_list[i]][min_exec_time_proccesor_id]);
+                task_processor_mappings[task_priority_list[i]] = min_exec_time_proccesor_id;
+            }else{
+                vector<int> possible_processors;
+                vector<int> pred_task_ids;
+                
+                // getting predecessor tasks ids and and processors and their neighbors
+                pred_task_ids = getPredTaskIds(task_priority_list[i], task_graph);
+                for (auto pred_task_id : pred_task_ids){
+                    possible_processors.push_back(task_processor_mappings[pred_task_id]);
+                    vector<int> neighbors;
+                    neighbors = noc.getNeighbors(task_processor_mappings[pred_task_id]);
+                    for (auto neighbor :neighbors)possible_processors.push_back(neighbor);
+                }
+                set<int> unique_processors(possible_processors.begin(), possible_processors.end());
+                possible_processors.assign(unique_processors.begin(), unique_processors.end());
+
+                int min_eft = INT_MAX;
+                int min_eft_possible_processor = 0;
+
+                for (auto possible_processor : possible_processors){
+                    // tentiative allocation to find optimal processor
+                    int est = 0;
+                    int actual_est = 0;
+                    int eft = 0;
+                    NoC noc_1 = noc; // dummy noc to check possibility
+                    vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], possible_processor, task_graph, task_processor_mappings, tasks_start_end_times);
+                    for (auto msg : msg_priority_list){
+                        int source_task_id = msg.sourceTaskId;
+                        est = max(est, routeMessage(msg, noc_1, task_processor_mappings[source_task_id], possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
+                    }
+                    pair<int, int>start_end_times = noc_1.nodes[possible_processor].processingElement.allocateProcessor(task_priority_list[i], est, execution_time_matrix[task_priority_list[i]][possible_processor]);
+                    actual_est = start_end_times.first;
+                    eft = start_end_times.second;
+                    // cout<<"task : "<<task_priority_list[i]<<", processor :  "<<possible_processor<<", eft : "<<eft<<endl;
+                    if (eft < min_eft){
+                        min_eft = eft;
+                        min_eft_possible_processor = possible_processor;
+                    }
+                }
+                // cout<<endl;
+                // permanent allocation
                 int est = 0;
                 int actual_est = 0;
-                int eft = 0;
-                NoC noc_1 = noc; // dummy noc to check possibility
-                vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], possible_processor, task_graph, task_processor_mappings, tasks_start_end_times);
+                
+                vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], min_eft_possible_processor, task_graph, task_processor_mappings, tasks_start_end_times);
                 for (auto msg : msg_priority_list){
                     int source_task_id = msg.sourceTaskId;
-                    est = max(est, routeMessage(msg, noc_1, task_processor_mappings[source_task_id], possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
+                    est = max<int>(est, routeMessage(msg, noc, task_processor_mappings[source_task_id], min_eft_possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
                 }
-                pair<int, int>start_end_times = noc_1.nodes[possible_processor].processingElement.allocateProcessor(task_priority_list[i], est, execution_time_matrix[task_priority_list[i]][possible_processor]);
-                actual_est = start_end_times.first;
-                eft = start_end_times.second;
-                cout<<"task : "<<task_priority_list[i]<<", processor :  "<<possible_processor<<", eft : "<<eft<<endl;
-                if (eft < min_eft){
-                    min_eft = eft;
-                    min_eft_possible_processor = possible_processor;
-                }
+                task_processor_mappings[task_priority_list[i]] = min_eft_possible_processor;
+                tasks_start_end_times[task_priority_list[i]] =  noc.nodes[min_eft_possible_processor].processingElement.allocateProcessor(task_priority_list[i], est, execution_time_matrix[task_priority_list[i]][min_eft_possible_processor]);
             }
-            cout<<endl;
-            // permanent allocation
-            int est = 0;
-            int actual_est = 0;
-            
-            vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], min_eft_possible_processor, task_graph, task_processor_mappings, tasks_start_end_times);
-            for (auto msg : msg_priority_list){
-                int source_task_id = msg.sourceTaskId;
-                est = max<int>(est, routeMessage(msg, noc, task_processor_mappings[source_task_id], min_eft_possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
-            }
-            task_processor_mappings[task_priority_list[i]] = min_eft_possible_processor;
-            tasks_start_end_times[task_priority_list[i]] =  noc.nodes[min_eft_possible_processor].processingElement.allocateProcessor(task_priority_list[i], est, execution_time_matrix[task_priority_list[i]][min_eft_possible_processor]);
+
         }
 
+        total_makespan += tasks_start_end_times[task_priority_list[task_priority_list.size()-1]].second;
+        avg_makespan = total_makespan/it;
+        cout<<"it - "<<it<<endl;
+        cout<<"make span : "<<tasks_start_end_times[task_priority_list[task_priority_list.size()-1]].second<<endl;
+
+
+        // cout<<"FINAL ALLOCATION, START AND END TIMES"<<endl;
+        // cout<<endl;
+        // for(auto task : task_priority_list){
+        //     cout<<"TASK - "<<task<<"(processor : "<<task_processor_mappings[task]<<")"<<endl;
+        //     cout<<tasks_start_end_times[task].first<<" "<<tasks_start_end_times[task].second<<endl;
+        // }
     }
-
-    cout<<"FINAL ALLOCATION, START AND END TIMES"<<endl;
-    cout<<endl;
-    for(auto task : task_priority_list){
-        cout<<"TASK - "<<task<<"(processor : "<<task_processor_mappings[task]<<")"<<endl;
-        cout<<tasks_start_end_times[task].first<<" "<<tasks_start_end_times[task].second<<endl;
-    }
-
-
+    cout<<avg_makespan<<endl;
 
     #ifndef ONLINE_JUDGE
     cerr << "\ntime taken : " << (float)clock() / CLOCKS_PER_SEC << " secs " << endl;
