@@ -262,7 +262,7 @@ class NoC{
     }
 
     vector<int> getNeighbors(int nodeId);
-    vector<Message> getMessagePriorityList(int taskId, int tentProcessorId, int task_graph[1000][1000], map<int, int> task_processor_mappings);
+    vector<Message> getMessagePriorityList(int taskId, int tentProcessorId, int task_graph[1000][1000], map<int, int> task_processor_mappings, map<int, pair<int, int>> tasks_start_end_times);
 };
 
 
@@ -407,35 +407,48 @@ int getNoOfFlits(int messageSize){
     return messageSize/b_w + 1;
 }
 
-vector<Message> NoC::getMessagePriorityList(int taskId, int tentProcessorId, int task_graph[1000][1000], map<int, int> task_processor_mappings){
+vector<Message> NoC::getMessagePriorityList(int taskId, int tentProcessorId, int task_graph[1000][1000], map<int, int> task_processor_mappings, map<int, pair<int, int>> tasks_start_end_times){
     
     vector<Message> message_priority_list;
     vector<int> pred_task_ids;
     pred_task_ids = getPredTaskIds(taskId, task_graph);
     map<int, int> message_ranks;
 
+    // f+k strategy
+    // for (auto pred_task_id : pred_task_ids){
+    //     // calculatin the no of flits in the message - f value
+    //     int no_of_flits = getNoOfFlits(task_graph[pred_task_id][taskId]); 
+    //     int pred_task_processor_id = task_processor_mappings[pred_task_id];
 
+    //     // finding the x, y locations of the processors
+    //     int x_loc_pred_task = pred_task_processor_id % n;
+    //     int y_loc_pred_task = pred_task_processor_id / n + 1;
+    //     int x_loc = tentProcessorId % n;
+    //     int y_loc = tentProcessorId / n + 1;
+
+    //     // calculating manhattan distance between processors
+    //     int shortest_distance = abs(x_loc - x_loc_pred_task) + abs(y_loc - y_loc_pred_task); // k value
+
+    //     message_ranks[pred_task_id] = no_of_flits + shortest_distance;
+    // }
+    // // sorting based on decreasing order of their ranks
+    // vector<pair<int, int> > message_rank_pairs(message_ranks.begin(), message_ranks.end());
+    // sort(message_rank_pairs.begin(), message_rank_pairs.end(), sortByDecreasingValue);
+
+    // // creating msg priority list to return
+    // for (auto message_rank_pair : message_rank_pairs){
+    //     Message message = Message(message_rank_pair.first, taskId, task_graph[message_rank_pair.first][taskId]);
+    //     message_priority_list.push_back(message);
+    // }
+
+    // earliest pred task completion
     for (auto pred_task_id : pred_task_ids){
-        // calculatin the no of flits in the message - f value
-        int no_of_flits = getNoOfFlits(task_graph[pred_task_id][taskId]); 
-        int pred_task_processor_id = task_processor_mappings[pred_task_id];
-
-        // finding the x, y locations of the processors
-        int x_loc_pred_task = pred_task_processor_id % n;
-        int y_loc_pred_task = pred_task_processor_id / n + 1;
-        int x_loc = tentProcessorId % n;
-        int y_loc = tentProcessorId / n + 1;
-
-        // calculating manhattan distance between processors
-        int shortest_distance = abs(x_loc - x_loc_pred_task) + abs(y_loc - y_loc_pred_task); // k value
-
-        message_ranks[pred_task_id] = no_of_flits + shortest_distance;
+        message_ranks[pred_task_id] = tasks_start_end_times[pred_task_id].second; // finish time
     }
-    // sorting based on decreasing order of their ranks
     vector<pair<int, int> > message_rank_pairs(message_ranks.begin(), message_ranks.end());
     sort(message_rank_pairs.begin(), message_rank_pairs.end(), sortByDecreasingValue);
+    reverse(message_rank_pairs.begin(), message_rank_pairs.end());    
 
-    // creating msg priority list to return
     for (auto message_rank_pair : message_rank_pairs){
         Message message = Message(message_rank_pair.first, taskId, task_graph[message_rank_pair.first][taskId]);
         message_priority_list.push_back(message);
@@ -641,11 +654,13 @@ int main() {
     for (int i = 1; i <= no_of_tasks; i++) {
         for (int j = 1; j <= no_of_tasks; j++) {
             cin >> task_graph[i][j];
-            if (task_graph[i][j] == 1){
-                task_graph[i][j] = rand() % 21 + 10;
-            }
+            // if (task_graph[i][j] == 1){
+            //     task_graph[i][j] = rand() % 21 + 10;
+            // }
         }
     }
+
+    cout<<"Task Graph"<<endl;
      for (int i = 1; i <= no_of_tasks; i++) {
         for (int j = 1; j <= no_of_tasks; j++) {
             cout<<task_graph[i][j]<<" ";
@@ -655,20 +670,20 @@ int main() {
 
 
     // input execution times
-    // for (int i = 1; i <= no_of_tasks; i++) {
-    //    for (int j = 1; j <= n * n ; j++) {
-    //         cin >> execution_time_matrix[i][j];
-    //     }
-    // }
+    for (int i = 1; i <= no_of_tasks; i++) {
+       for (int j = 1; j <= n * n ; j++) {
+            cin >> execution_time_matrix[i][j];
+        }
+    }
 
                 // OR
 
     // generate random execution times
-    for (int i = 1; i <= no_of_tasks; i++) {
-        for (int j = 1; j <= n * n ; j++) {
-            execution_time_matrix[i][j] = rand() % 21 + 10;
-        }
-    }
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //     for (int j = 1; j <= n * n ; j++) {
+    //         execution_time_matrix[i][j] = rand() % 21 + 10;
+    //     }
+    // }
 
     cout<<"Execution time matrix"<<endl;
 
@@ -726,7 +741,7 @@ int main() {
                 int actual_est = 0;
                 int eft = 0;
                 NoC noc_1 = noc; // dummy noc to check possibility
-                vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], possible_processor, task_graph, task_processor_mappings);
+                vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], possible_processor, task_graph, task_processor_mappings, tasks_start_end_times);
                 for (auto msg : msg_priority_list){
                     int source_task_id = msg.sourceTaskId;
                     est = max(est, routeMessage(msg, noc_1, task_processor_mappings[source_task_id], possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
@@ -745,7 +760,7 @@ int main() {
             int est = 0;
             int actual_est = 0;
             
-            vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], min_eft_possible_processor, task_graph, task_processor_mappings);
+            vector<Message> msg_priority_list = noc.getMessagePriorityList(task_priority_list[i], min_eft_possible_processor, task_graph, task_processor_mappings, tasks_start_end_times);
             for (auto msg : msg_priority_list){
                 int source_task_id = msg.sourceTaskId;
                 est = max<int>(est, routeMessage(msg, noc, task_processor_mappings[source_task_id], min_eft_possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
