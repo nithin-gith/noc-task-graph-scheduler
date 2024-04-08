@@ -784,6 +784,7 @@ int main() {
         cout<<"make span : "<<tasks_start_end_times[task_priority_list[task_priority_list.size()-1]].second<<endl;
 
 
+        cerr<<"completed "<<it<<" th iteration :"<<tasks_start_end_times[task_priority_list[task_priority_list.size()-1]].second<<endl;
         // cout<<"FINAL ALLOCATION, START AND END TIMES"<<endl;
         // cout<<endl;
         // for(auto task : task_priority_list){
