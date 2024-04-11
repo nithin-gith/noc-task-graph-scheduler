@@ -624,6 +624,63 @@ int routeMessage(Message m_ij, NoC &noc, int sourceProcessorId, int destProcesso
     return startTime + shortest_transmission_time_message;
 }
 
+int routeMessageXY(Message m_ij, NoC &noc, int sourceProcessorId, int destProcessorId, map<string, vector<vector<int>>> all_shortest_paths, int startTime){
+    
+    int no_of_flits = getNoOfFlits(m_ij.messageSize);
+    int transmission_time_message = 0;
+
+
+    for (int i = 1; i <= no_of_flits; i++){
+        int transmission_time_flit = 0;
+        int source_x = (sourceProcessorId - 1) % n + 1;
+        int source_y = (sourceProcessorId - 1) / n + 1;
+        int dest_x = (destProcessorId - 1) % n;
+        int dest_y = (destProcessorId - 1) / n + 1; 
+        int cur_x = source_x;
+        int cur_y = source_y;
+        
+        while(!(cur_x == dest_x & cur_y == dest_y)){
+            bool is_source_node = false;
+            int node_id = cur_y * n + cur_x;
+            if (cur_x == source_x & cur_y == source_y) is_source_node = true;
+            if(cur_x > dest_x){
+                if (is_source_node){
+                    transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], WEST);
+                }else{
+                    transmission_time_flit += noc.nodes[node_id].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], WEST);
+                }
+                cur_x--;
+            }else if (cur_x < dest_x){
+                if (is_source_node){
+                    transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], EAST);
+                }else{
+                    transmission_time_flit += noc.nodes[node_id].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], EAST);
+                }
+                cur_x++;
+            }else{
+                if(cur_y > dest_y){
+                    if (is_source_node){
+                        transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], SOUTH);
+                    }else{
+                        transmission_time_flit += noc.nodes[node_id].router.northPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], SOUTH);
+                    }
+                    cur_y--;
+                }else if(cur_y < dest_y){
+                    if (is_source_node){
+                        transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], NORTH);
+                    }else{
+                        transmission_time_flit += noc.nodes[node_id].router.southPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], NORTH);
+                    }
+                    cur_y++;
+                }
+            }
+        }
+
+        transmission_time_message = max(transmission_time_message, transmission_time_flit);
+    }
+    return startTime + transmission_time_message; 
+}
+
 
 int main() {
     IOS
