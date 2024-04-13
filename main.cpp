@@ -624,7 +624,7 @@ int routeMessage(Message m_ij, NoC &noc, int sourceProcessorId, int destProcesso
     return startTime + shortest_transmission_time_message;
 }
 
-int routeMessageXY(Message m_ij, NoC &noc, int sourceProcessorId, int destProcessorId, map<string, vector<vector<int>>> all_shortest_paths, int startTime){
+int routeMessageXY(Message m_ij, NoC &noc, int sourceProcessorId, int destProcessorId, int startTime){
     
     int no_of_flits = getNoOfFlits(m_ij.messageSize);
     int transmission_time_message = 0;
@@ -634,15 +634,17 @@ int routeMessageXY(Message m_ij, NoC &noc, int sourceProcessorId, int destProces
         int transmission_time_flit = 0;
         int source_x = (sourceProcessorId - 1) % n + 1;
         int source_y = (sourceProcessorId - 1) / n + 1;
-        int dest_x = (destProcessorId - 1) % n;
+        int dest_x = (destProcessorId - 1) % n + 1;
         int dest_y = (destProcessorId - 1) / n + 1; 
         int cur_x = source_x;
         int cur_y = source_y;
+        bool dir_change = false;
         
-        while(!(cur_x == dest_x & cur_y == dest_y)){
+        while(!(cur_x == dest_x && cur_y == dest_y)){
             bool is_source_node = false;
-            int node_id = cur_y * n + cur_x;
-            if (cur_x == source_x & cur_y == source_y) is_source_node = true;
+            int node_id = (cur_y - 1) * n + cur_x;
+
+            if (cur_x == source_x && cur_y == source_y) is_source_node = true;
             if(cur_x > dest_x){
                 if (is_source_node){
                     transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], WEST);
@@ -650,6 +652,7 @@ int routeMessageXY(Message m_ij, NoC &noc, int sourceProcessorId, int destProces
                     transmission_time_flit += noc.nodes[node_id].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], WEST);
                 }
                 cur_x--;
+                if (cur_x == dest_x) dir_change = true;
             }else if (cur_x < dest_x){
                 if (is_source_node){
                     transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], EAST);
@@ -657,19 +660,28 @@ int routeMessageXY(Message m_ij, NoC &noc, int sourceProcessorId, int destProces
                     transmission_time_flit += noc.nodes[node_id].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], EAST);
                 }
                 cur_x++;
+                if (cur_x == dest_x) {dir_change = true;}
             }else{
                 if(cur_y > dest_y){
                     if (is_source_node){
-                        transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], SOUTH);
+                        transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], NORTH);
+                    }else if(dir_change){
+                        if (source_x < dest_x) transmission_time_flit += noc.nodes[node_id].router.westPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], NORTH);
+                        if (source_x > dest_x) transmission_time_flit += noc.nodes[node_id].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], NORTH);
+                        dir_change = false;
                     }else{
-                        transmission_time_flit += noc.nodes[node_id].router.northPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], SOUTH);
+                        transmission_time_flit += noc.nodes[node_id].router.northPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], NORTH);
                     }
                     cur_y--;
                 }else if(cur_y < dest_y){
                     if (is_source_node){
-                        transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], NORTH);
+                        transmission_time_flit = noc.nodes[node_id].router.localPort.updateSchedule(startTime, m_ij.flits[i], SOUTH);
+                    }else if(dir_change){
+                        if (source_x < dest_x) transmission_time_flit += noc.nodes[node_id].router.westPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], SOUTH);
+                        if (source_x > dest_x) transmission_time_flit += noc.nodes[node_id].router.eastPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], SOUTH);
+                        dir_change = false;
                     }else{
-                        transmission_time_flit += noc.nodes[node_id].router.southPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], NORTH);
+                        transmission_time_flit += noc.nodes[node_id].router.southPort.updateSchedule(startTime + transmission_time_flit, m_ij.flits[i], SOUTH);
                     }
                     cur_y++;
                 }
@@ -802,6 +814,7 @@ int main() {
                 for (auto msg : msg_priority_list){
                     int source_task_id = msg.sourceTaskId;
                     est = max(est, routeMessage(msg, noc_1, task_processor_mappings[source_task_id], possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
+                        // est = max(est, routeMessageXY(msg, noc_1, task_processor_mappings[source_task_id], possible_processor, tasks_start_end_times[source_task_id].second));
                 }
                 pair<int, int>start_end_times = noc_1.nodes[possible_processor].processingElement.allocateProcessor(task_priority_list[i], est, execution_time_matrix[task_priority_list[i]][possible_processor]);
                 actual_est = start_end_times.first;
@@ -821,6 +834,7 @@ int main() {
             for (auto msg : msg_priority_list){
                 int source_task_id = msg.sourceTaskId;
                 est = max<int>(est, routeMessage(msg, noc, task_processor_mappings[source_task_id], min_eft_possible_processor, all_shortest_paths, tasks_start_end_times[source_task_id].second));
+                    // est = max(est, routeMessageXY(msg, noc, task_processor_mappings[source_task_id], min_eft_possible_processor, tasks_start_end_times[source_task_id].second));
             }
             task_processor_mappings[task_priority_list[i]] = min_eft_possible_processor;
             tasks_start_end_times[task_priority_list[i]] =  noc.nodes[min_eft_possible_processor].processingElement.allocateProcessor(task_priority_list[i], est, execution_time_matrix[task_priority_list[i]][min_eft_possible_processor]);
