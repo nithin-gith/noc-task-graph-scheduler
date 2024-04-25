@@ -552,13 +552,16 @@ int routeMessage(Message m_ij, NoC &noc, int sourceProcessorId, int destProcesso
     vector<vector<int>> shortest_paths = all_shortest_paths[ to_string(sourceProcessorId * 100) + to_string(destProcessorId)]; 
 
     int no_of_flits = getNoOfFlits(m_ij.messageSize);
-
+    
     for (int i = 1; i <= no_of_flits; i++){
 
         int min_transmission_time_flit = INT_MAX;
         vector<int> min_time_path_flit;
-        for (auto shortest_path : shortest_paths){
+        for (int route_no = 0; route_no < shortest_paths.size(); route_no++){
             // tentiative routing to check for quickest path among shortest paths
+            if (route_no + 1 > max_routes_to_explore) break;
+
+            vector<int> shortest_path = shortest_paths[route_no];
             NoC noc_1 = noc;
             int transmission_time_flit = 0;
 
