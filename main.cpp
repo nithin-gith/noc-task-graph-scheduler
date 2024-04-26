@@ -926,6 +926,25 @@ int main() {
         cout<<tasks_start_end_times[task].first<<" "<<tasks_start_end_times[task].second<<endl;
     }
 
+    double speedup = 0.0;
+    int min_sum_exec_times = INT_MAX;
+    for (int j =1; j<=n*n;j++){
+        int sum_exec_times = 0;
+        for (int i = 1; i<=no_of_tasks; i++ ){
+            sum_exec_times += execution_time_matrix[i][j];
+        }
+        min_sum_exec_times = min(min_sum_exec_times, sum_exec_times);
+    }
+    int makespan = 0;
+    for (auto task : task_priority_list){
+        makespan = max(makespan, tasks_start_end_times[task].second);
+    }
+
+    speedup = (min_sum_exec_times *1.0) / (makespan * 1.0);
+    cout<<"Makespan : "<<makespan<<endl;
+    cout<<"Speedup : "<<speedup<<endl;
+
+
 
 
     #ifndef ONLINE_JUDGE
