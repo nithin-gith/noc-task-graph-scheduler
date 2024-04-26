@@ -712,6 +712,9 @@ int main() {
     int execution_time_matrix[1000][1000];
     vector<int> task_priority_list;
     map<int, int> task_processor_mappings;
+    float avg_execution_time;
+    float avg_task_execution_time[1000];
+    float avg_communication_time;
 
     
 
@@ -722,15 +725,85 @@ int main() {
     cin>>no_of_tasks;
 
 
-    // cout<<"Input the adjancy matrix :";
+
+    // BETA AND CCR GENERATION
+
     for (int i = 1; i <= no_of_tasks; i++) {
         for (int j = 1; j <= no_of_tasks; j++) {
             cin >> task_graph[i][j];
-            // if (task_graph[i][j] == 1){
-            //     task_graph[i][j] = rand() % 21 + 10;
-            // }
         }
     }
+
+    for (int i = 1; i<= no_of_tasks; i++){
+        avg_task_execution_time[i] = rand()%20 + 10;
+    }
+
+    float lower, upper;
+    int  low, up;
+    upper = (1 + (beta/2));
+    lower = (1 - (beta/2));
+
+    for(int i = 1 ; i<= no_of_tasks; i++){
+        for (int j = 1; j<= n*n ;j++){
+            low = avg_task_execution_time[i] * lower;
+            up = avg_task_execution_time[i] * upper;
+            up = up - low;
+            execution_time_matrix[i][j] = rand() % up + low;
+        }
+    }
+    
+    int sum_task_execution_time = 0;
+    for(int i = 1 ; i<= no_of_tasks; i++){
+        for (int j = 1; j<= n*n ;j++){
+            sum_task_execution_time += execution_time_matrix[i][j];
+        }
+    }
+    avg_execution_time = floor(sum_task_execution_time/(no_of_tasks*n*n));
+    avg_communication_time = ccr * avg_execution_time;
+
+
+    random_device rd;  // Seed generator
+    default_random_engine generator(rd());
+
+    normal_distribution<double> distribution(avg_communication_time, 0.2 * avg_communication_time );
+
+    float sum_message_sizes = 0;
+    float avg_message_sizes = 0;
+    int count = 0;
+    for(int i = 1; i <= no_of_tasks; i++){
+        for(int j = 1; j <= no_of_tasks; j++){
+            if (task_graph[i][j] != 0){
+                task_graph[i][j] = floor(distribution(generator));
+                sum_message_sizes += task_graph[i][j];
+                count++;
+            }
+        }
+    }
+
+    avg_message_sizes = sum_message_sizes/ count;
+
+
+    for(int i = 1; i <= no_of_tasks; i++){
+        for(int j = 1; j <= no_of_tasks; j++){
+            if (task_graph[i][j] != 1){
+                task_graph[i][j] = task_graph[i][j] * (avg_communication_time/avg_message_sizes);
+            }
+        }
+    }
+
+    // BETA AND CCR GENERATION END
+
+    
+
+    // cout<<"Input the adjancy matrix :";
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //     for (int j = 1; j <= no_of_tasks; j++) {
+    //         cin >> task_graph[i][j];
+    //         // if (task_graph[i][j] == 1){
+    //         //     task_graph[i][j] = rand() % 21 + 10;
+    //         // }
+    //     }
+    // }
 
     cout<<"Task Graph"<<endl;
      for (int i = 1; i <= no_of_tasks; i++) {
@@ -742,11 +815,11 @@ int main() {
 
 
     // input execution times
-    for (int i = 1; i <= no_of_tasks; i++) {
-       for (int j = 1; j <= n * n ; j++) {
-            cin >> execution_time_matrix[i][j];
-        }
-    }
+    // for (int i = 1; i <= no_of_tasks; i++) {
+    //    for (int j = 1; j <= n * n ; j++) {
+    //         cin >> execution_time_matrix[i][j];
+    //     }
+    // }
 
                 // OR
 
@@ -766,6 +839,7 @@ int main() {
         cout<<endl;
     }
     cout<<endl;
+
 
 
     // creating task priority list
