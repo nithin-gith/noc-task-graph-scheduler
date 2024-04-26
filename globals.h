@@ -5,4 +5,6 @@ extern int n;
 extern int no_of_tasks;
 extern int b_w;
 extern int max_routes_to_explore;
+extern float beta;
+extern float ccr;
 #endif 
