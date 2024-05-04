@@ -1,4 +1,4 @@
-# Scheduling Task Graph Application for Network on Chip based Heterogeneous Multiprocessor System on Chip
+# Scheduling Task Graph Application for Network on Chip based Heterogeneous Multiprocessor SoCs
 
 This repo consists of simulation of Network on Chip (NoC) in C++.
 Simulation implemented is used for scheduling a application task graph, for exact algorithm used for scheduling please refer to the [CLS](./communication_aware_list_scheduling.pdf)
